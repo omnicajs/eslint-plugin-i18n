@@ -1,0 +1,40 @@
+{
+  "name": "@omnicajs/eslint-plugin-i18n",
+  "version": "1.0.0",
+  "description": "OmnicaJS wrapper for @intlify/eslint-plugin-vue-i18n",
+  "license": "MIT",
+  "type": "commonjs",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "tests/fixtures"
+  ],
+  "engines": {
+    "node": ">=20.19.0"
+  },
+  "scripts": {
+    "build": "tsc --project tsconfig.build.json",
+    "test": "tsx ./node_modules/mocha/bin/mocha \"tests/lib/**/*.ts\" --timeout 15000",
+    "prepublishOnly": "npm run build"
+  },
+  "dependencies": {
+    "@intlify/eslint-plugin-vue-i18n": "^4.3.0",
+    "debug": "^4.3.4",
+    "globals": "^16.0.0"
+  },
+  "peerDependencies": {
+    "eslint": "^8.0.0 || ^9.0.0-0 || ^10.0.0",
+    "jsonc-eslint-parser": "^2.3.0 || ^3.0.0",
+    "vue-eslint-parser": "^10.0.0",
+    "yaml-eslint-parser": "^1.2.2"
+  },
+  "devDependencies": {
+    "@types/debug": "^4.1.12",
+    "@types/mocha": "^10.0.10",
+    "@types/node": "^22.15.29",
+    "mocha": "^11.0.0",
+    "tsx": "^4.21.0",
+    "typescript": "^5.6.0"
+  }
+}

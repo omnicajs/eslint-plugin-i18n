@@ -1,0 +1,27 @@
+stages:
+  - test
+  - publish
+
+image: node:20
+
+cache:
+  paths:
+    - node_modules/
+
+before_script:
+  - npm ci
+
+test:
+  stage: test
+  script:
+    - npm run build
+    - npm test
+  except:
+    - tags
+
+publish:
+  stage: publish
+  script:
+    - npm publish
+  only:
+    - tags
