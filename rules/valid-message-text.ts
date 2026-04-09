@@ -29,7 +29,6 @@ const getValidators = (
 
   for (const locale in settings) {
     validators[locale] = settings[locale].map(modulePath => {
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
       const fn = require(modulePath) as unknown
 
       if (typeof fn === 'function') {
@@ -312,7 +311,7 @@ function create(context: RuleContext): RuleListener {
   return {}
 }
 
-export = createRule({
+const rule = createRule({
   meta: {
     type: 'layout',
     docs: {
@@ -343,3 +342,19 @@ export = createRule({
   },
   create
 })
+
+type PrivateApi = {
+  getValidators: typeof getValidators
+  isLeafMessageNode: typeof isLeafMessageNode
+  getMessage: typeof getMessage
+  create: typeof create
+}
+
+;(rule as typeof rule & { __private: PrivateApi }).__private = {
+  getValidators,
+  isLeafMessageNode,
+  getMessage,
+  create
+}
+
+export = rule

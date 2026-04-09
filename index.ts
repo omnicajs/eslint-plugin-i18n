@@ -58,7 +58,10 @@ const recommendedLegacy = {
   )
 }
 
-let plugin: {
+const plugin: {
+  configs: Record<string, unknown>
+  rules: Record<string, unknown>
+} = {} as {
   configs: Record<string, unknown>
   rules: Record<string, unknown>
 }
@@ -121,7 +124,7 @@ const flatRecommended = [
   }
 ]
 
-plugin = {
+Object.assign(plugin, {
   configs: {
     'base-legacy': baseLegacy,
     'recommended-legacy': recommendedLegacy,
@@ -134,6 +137,6 @@ plugin = {
     ...upstream.rules,
     'valid-message-text': validMessageText
   }
-}
+})
 
 export = plugin
