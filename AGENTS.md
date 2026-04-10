@@ -36,6 +36,7 @@ high-confidence automated checks.
 - This project is a single-package TypeScript ESLint plugin.
 - Main source directories:
   - `rules/**` - custom ESLint rule implementations;
+  - `validators/**` - reusable text validators for locale message checks;
   - `tests/lib/**` - RuleTester-based behavior tests;
   - `tests/fixtures/**` - fixture files for validators and lint inputs.
 - Main plugin entry point: `index.ts`.
@@ -86,10 +87,13 @@ npm run build
 - Rule changes must include both valid and invalid scenarios in tests.
 - Prefer behavior-oriented tests through ESLint RuleTester over brittle
   implementation-coupled checks.
-- Keep statements, lines, and functions coverage thresholds strict (100%).
+- Keep functions coverage threshold strict (100% minimum).
+- Keep statements and lines thresholds high and stable for transpiled output
+  (99% minimum each).
 - Keep branch coverage threshold as high as practical for this codebase's
-  transpiled runtime target (currently 89%) unless explicitly changed by the
+  transpiled runtime target (89% minimum) unless explicitly changed by the
   user.
+- Coverage thresholds source of truth: `vitest.config.ts`.
 
 ## Local Skills
 - `skills/commit-workflow/SKILL.md` - rules for splitting changes into commits

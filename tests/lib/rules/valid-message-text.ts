@@ -12,7 +12,7 @@ const rule = require('../../../dist/rules/valid-message-text.js')
 const fixturesRoot = join(__dirname, '../../fixtures/valid-message-text')
 
 const tester = new RuleTester({
-  languageOptions: { parser: vueParser, ecmaVersion: 2015 }
+  languageOptions: { parser: vueParser, ecmaVersion: 2015 },
 })
 
 describe('valid-message-text rule', () => {
@@ -30,17 +30,17 @@ describe('valid-message-text rule', () => {
           settings: {
             'vue-i18n': {
               localeDir: `${fixturesRoot}/*.{json,yaml,yml}`,
-              messageSyntaxVersion: '^9.0.0'
-            }
+              messageSyntaxVersion: '^9.0.0',
+            },
           },
           options: [
             {
               validators: {
-                foo: [join(fixturesRoot, 'not-allowed.js')]
-              }
-            }
-          ]
-        }
+                foo: [join(fixturesRoot, 'not-allowed.js')],
+              },
+            },
+          ],
+        },
       ],
       invalid: [
         {
@@ -59,25 +59,25 @@ describe('valid-message-text rule', () => {
           settings: {
             'vue-i18n': {
               localeDir: `${fixturesRoot}/*.{json,yaml,yml}`,
-              messageSyntaxVersion: '^9.0.0'
-            }
+              messageSyntaxVersion: '^9.0.0',
+            },
           },
           options: [
             {
               validators: {
-                foo: [join(fixturesRoot, 'not-allowed.js')]
-              }
-            }
+                foo: [join(fixturesRoot, 'not-allowed.js')],
+              },
+            },
           ],
           errors: [
             {
               message: '\'a\' contains following errors: Contains "not-allowed"',
               line: 3,
-              column: 11
-            }
-          ]
-        }
-      ]
+              column: 11,
+            },
+          ],
+        },
+      ],
     })
   })
 })

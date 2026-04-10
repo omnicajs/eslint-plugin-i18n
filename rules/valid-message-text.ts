@@ -4,7 +4,7 @@ import { extname } from 'node:path'
 import debugBuilder from 'debug'
 import {
   defineCustomBlocksVisitor,
-  getLocaleMessages
+  getLocaleMessages,
 } from '@intlify/eslint-plugin-vue-i18n/dist/utils/index'
 import type { RuleContext, RuleListener } from '@intlify/eslint-plugin-vue-i18n/dist/types'
 import type { LocaleMessage } from '@intlify/eslint-plugin-vue-i18n/dist/utils/locale-messages'
@@ -12,7 +12,7 @@ import { joinPath } from '@intlify/eslint-plugin-vue-i18n/dist/utils/key-path'
 import { createRule } from '@intlify/eslint-plugin-vue-i18n/dist/utils/rule'
 import {
   getFilename,
-  getSourceCode
+  getSourceCode,
 } from '@intlify/eslint-plugin-vue-i18n/dist/utils/compat'
 
 const debug = debugBuilder('eslint-plugin-i18n:valid-message-text')
@@ -97,12 +97,12 @@ function create(context: RuleContext): RuleListener {
     reportNode: JSONAST.JSONNode | YAMLAST.YAMLNode
   ) {
     context.report({
-      message: "'{{path}}' contains following errors: {{errors}}",
+      message: '\'{{path}}\' contains following errors: {{errors}}',
       data: {
         path: joinPath(...keyPath),
-        errors: errors.join(', ')
+        errors: errors.join(', '),
       },
-      loc: reportNode.loc
+      loc: reportNode.loc,
     })
   }
 
@@ -126,11 +126,11 @@ function create(context: RuleContext): RuleListener {
       const locale = targetLocaleMessage.locales[0]
       keyStack = {
         locale,
-        keyPath: []
+        keyPath: [],
       }
     } else {
       keyStack = {
-        locale: null
+        locale: null,
       }
     }
 
@@ -145,7 +145,7 @@ function create(context: RuleContext): RuleListener {
             node,
             locale: key as string,
             keyPath: [],
-            upper: keyStack
+            upper: keyStack,
           }
         } else {
           const keyPath = [...keyStack.keyPath, key]
@@ -172,7 +172,7 @@ function create(context: RuleContext): RuleListener {
             node,
             locale: keyStack.locale,
             keyPath,
-            upper: keyStack
+            upper: keyStack,
           }
         }
       },
@@ -180,7 +180,7 @@ function create(context: RuleContext): RuleListener {
         if (keyStack.node === node) {
           keyStack = keyStack.upper as KeyStack
         }
-      }
+      },
     }
   }
 
@@ -208,7 +208,7 @@ function create(context: RuleContext): RuleListener {
         node: JSONAST.JSONArrayExpression['elements'][number]
       ) {
         ctx.leaveKey(node)
-      }
+      },
     }
   }
 
@@ -261,7 +261,7 @@ function create(context: RuleContext): RuleListener {
       },
       'YAMLSequence > *:exit'(node: YAMLAST.YAMLSequence['entries'][number]) {
         ctx.leaveKey(node)
-      }
+      },
     }
   }
 
@@ -318,7 +318,7 @@ const rule = createRule({
       description: 'validate locale message text by custom validators',
       category: 'Best Practices',
       recommended: false,
-      url: 'https://eslint-plugin-vue-i18n.intlify.dev/rules/valid-message-text.html'
+      url: 'https://eslint-plugin-vue-i18n.intlify.dev/rules/valid-message-text.html',
     },
     fixable: null,
     schema: [
@@ -331,16 +331,16 @@ const rule = createRule({
               '^([a-zA-Z]{2,}[_-]{0,1}[a-zA-Z]*)$': {
                 type: 'array',
                 items: { type: 'string' },
-                uniqueItems: true
-              }
+                uniqueItems: true,
+              },
             },
-            additionalProperties: false
-          }
-        }
-      }
-    ]
+            additionalProperties: false,
+          },
+        },
+      },
+    ],
   },
-  create
+  create,
 })
 
 type PrivateApi = {
@@ -354,7 +354,8 @@ type PrivateApi = {
   getValidators,
   isLeafMessageNode,
   getMessage,
-  create
+  create,
 }
 
+/* c8 ignore next */
 export = rule

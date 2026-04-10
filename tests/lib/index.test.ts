@@ -33,7 +33,7 @@ describe('plugin entry', () => {
   it('keeps yaml overrides in legacy config', () => {
     const overrides = plugin.configs['base-legacy'].overrides as Array<Record<string, unknown>>
     const yamlOverride = overrides.find(override =>
-      Array.isArray(override.files) && override.files.includes('*.yaml'),
+      Array.isArray(override.files) && override.files.includes('*.yaml')
     )
 
     expect(yamlOverride).toBeTruthy()

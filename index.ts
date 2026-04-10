@@ -23,21 +23,21 @@ const baseLegacy = {
       files: ['*.json', '*.json5'],
       parser: require.resolve('vue-eslint-parser'),
       parserOptions: {
-        parser: require.resolve('jsonc-eslint-parser')
-      }
+        parser: require.resolve('jsonc-eslint-parser'),
+      },
     },
     {
       files: ['*.yaml', '*.yml'],
       parser: require.resolve('vue-eslint-parser'),
       parserOptions: {
-        parser: require.resolve('yaml-eslint-parser')
+        parser: require.resolve('yaml-eslint-parser'),
       },
       rules: {
         'no-irregular-whitespace': 'off',
-        'spaced-comment': 'off'
-      }
-    }
-  ]
+        'spaced-comment': 'off',
+      },
+    },
+  ],
 }
 
 const recommendedLegacy = {
@@ -46,16 +46,16 @@ const recommendedLegacy = {
     ecmaVersion: 2018,
     sourceType: 'module',
     ecmaFeatures: {
-      jsx: true
-    }
+      jsx: true,
+    },
   },
   env: {
     browser: true,
-    es6: true
+    es6: true,
   },
   rules: mapRuleIds(
     upstream.configs['recommended-legacy'].rules as Record<string, unknown>
-  )
+  ),
 }
 
 const plugin: {
@@ -72,8 +72,8 @@ const flatBase = [
     plugins: {
       get [NAMESPACE]() {
         return plugin
-      }
-    }
+      },
+    },
   },
   {
     name: `${NAMESPACE}:base:setup:json`,
@@ -81,9 +81,9 @@ const flatBase = [
     languageOptions: {
       parser: require('vue-eslint-parser'),
       parserOptions: {
-        parser: require('jsonc-eslint-parser')
-      }
-    }
+        parser: require('jsonc-eslint-parser'),
+      },
+    },
   },
   {
     name: `${NAMESPACE}:base:setup:yaml`,
@@ -91,14 +91,14 @@ const flatBase = [
     languageOptions: {
       parser: require('vue-eslint-parser'),
       parserOptions: {
-        parser: require('yaml-eslint-parser')
-      }
+        parser: require('yaml-eslint-parser'),
+      },
     },
     rules: {
       'no-irregular-whitespace': 'off',
-      'spaced-comment': 'off'
-    }
-  }
+      'spaced-comment': 'off',
+    },
+  },
 ]
 
 const flatRecommended = [
@@ -111,17 +111,17 @@ const flatRecommended = [
       globals: globals.browser,
       parserOptions: {
         ecmaFeatures: {
-          jsx: true
-        }
-      }
-    }
+          jsx: true,
+        },
+      },
+    },
   },
   {
     name: `${NAMESPACE}:recommended:rules`,
     rules: mapRuleIds(
       upstream.configs['recommended-legacy'].rules as Record<string, unknown>
-    )
-  }
+    ),
+  },
 ]
 
 Object.assign(plugin, {
@@ -131,12 +131,12 @@ Object.assign(plugin, {
     base: flatBase,
     recommended: flatRecommended,
     'flat/base': flatBase,
-    'flat/recommended': flatRecommended
+    'flat/recommended': flatRecommended,
   },
   rules: {
     ...upstream.rules,
-    'valid-message-text': validMessageText
-  }
+    'valid-message-text': validMessageText,
+  },
 })
 
 export = plugin

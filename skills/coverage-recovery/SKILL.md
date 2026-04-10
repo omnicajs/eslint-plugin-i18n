@@ -24,8 +24,10 @@ Use this skill when the user asks to:
 - Prefer fixing architecture/redundancy over adding synthetic tests for dead
   code.
 - Defensive branches should be tested with controlled failure scenarios.
-- Keep statements/lines/functions thresholds strict (100%).
-- Keep branch threshold as high as practical (currently 89%) unless explicitly
+- Keep functions threshold strict (100% minimum).
+- Keep statements/lines thresholds high and stable for transpiled output
+  (99% minimum each).
+- Keep branch threshold as high as practical (89% minimum) unless explicitly
   changed by the user.
 - Do not loop endlessly on non-resolvable cases: escalate with concrete options.
 

@@ -37,11 +37,31 @@ describe('valid-message-text private API', () => {
     ])
   })
 
+  it('loads built-in validators from repository validators directory', () => {
+    const validators = privateApi.getValidators({
+      ru_RU: [join(__dirname, '../../../validators/no-cyrillic.js')],
+    })
+
+    expect(validators.ru_RU).toHaveLength(1)
+    expect(validators.ru_RU[0]('text')).toEqual([true, ''])
+    expect(validators.ru_RU[0]('текст')[0]).toBe(false)
+  })
+
+  it('uses locale-specific mixed-character validators with different behavior', () => {
+    const validators = privateApi.getValidators({
+      en_GB: [join(__dirname, '../../../validators/no-mixed-characters.en_GB.js')],
+      es_ES: [join(__dirname, '../../../validators/no-mixed-characters.es_ES.js')],
+    })
+
+    expect(validators.en_GB[0]('áéíóú')[0]).toBe(false)
+    expect(validators.es_ES[0]('áéíóú')[0]).toBe(true)
+  })
+
   it('throws when validator module does not export a function', () => {
     expect(() =>
       privateApi.getValidators({
         foo: [join(fixturesRoot, 'not-function.js')],
-      }),
+      })
     ).toThrow('does not contain validation function')
   })
 
@@ -52,7 +72,7 @@ describe('valid-message-text private API', () => {
       privateApi.isLeafMessageNode({
         type: 'JSONLiteral',
         value: 'hello',
-      }),
+      })
     ).toBe(true)
 
     expect(
@@ -61,19 +81,19 @@ describe('valid-message-text private API', () => {
         value: null,
         regex: null,
         bigint: null,
-      }),
+      })
     ).toBe(false)
 
     expect(
       privateApi.isLeafMessageNode({
         type: 'JSONIdentifier',
-      }),
+      })
     ).toBe(true)
 
     expect(
       privateApi.isLeafMessageNode({
         type: 'JSONTemplateLiteral',
-      }),
+      })
     ).toBe(true)
 
     expect(
@@ -83,21 +103,21 @@ describe('valid-message-text private API', () => {
           type: 'JSONLiteral',
           value: 'inner',
         },
-      }),
+      })
     ).toBe(true)
 
     expect(
       privateApi.isLeafMessageNode({
         type: 'YAMLScalar',
         value: 'hello',
-      }),
+      })
     ).toBe(true)
 
     expect(
       privateApi.isLeafMessageNode({
         type: 'YAMLScalar',
         value: null,
-      }),
+      })
     ).toBe(false)
 
     expect(
@@ -107,19 +127,19 @@ describe('valid-message-text private API', () => {
           type: 'YAMLScalar',
           value: 'inner',
         },
-      }),
+      })
     ).toBe(true)
 
     expect(
       privateApi.isLeafMessageNode({
         type: 'YAMLAlias',
-      }),
+      })
     ).toBe(true)
 
     expect(
       privateApi.isLeafMessageNode({
         type: 'JSONObjectExpression',
-      }),
+      })
     ).toBe(false)
   })
 
@@ -128,27 +148,27 @@ describe('valid-message-text private API', () => {
       privateApi.getMessage({
         type: 'JSONLiteral',
         value: 'json-message',
-      }),
+      })
     ).toBe('json-message')
 
     expect(
       privateApi.getMessage({
         type: 'YAMLScalar',
         value: 'yaml-message',
-      }),
+      })
     ).toBe('yaml-message')
 
     expect(() =>
       privateApi.getMessage({
         type: 'JSONLiteral',
         value: 1,
-      }),
+      })
     ).toThrow('Incorrect node')
 
     expect(() =>
       privateApi.getMessage({
         type: 'YAMLAlias',
-      }),
+      })
     ).toThrow('Incorrect node')
   })
 
@@ -483,5 +503,50 @@ describe('valid-message-text private API', () => {
 
     visitors['JSONArrayExpression > *']?.(arrayEntry)
     visitors['JSONArrayExpression > *:exit']?.(arrayEntry)
+  })
+
+  it('does not use validators when they are not configured', () => {
+    vi.spyOn(compat, 'getFilename').mockReturnValue('/tmp/file.json')
+    vi.spyOn(compat, 'getSourceCode').mockReturnValue({
+      parserServices: {
+        isJSON: true,
+        isYAML: false,
+      },
+    })
+    vi.spyOn(localeUtils, 'getLocaleMessages').mockReturnValue({
+      findExistLocaleMessage: () => ({
+        isResolvedLocaleByFileName: () => true,
+        locales: ['ru_RU'],
+      }),
+    })
+
+    const report = vi.fn()
+    const context = {
+      options: [{}],
+      report,
+    }
+
+    const jsonVisitors = privateApi.create(context)
+    const jsonValueNode = {
+      type: 'JSONLiteral',
+      value: 'CRM',
+    }
+    const jsonKeyNode = {
+      type: 'JSONLiteral',
+      value: 'a',
+      loc: {
+        start: { line: 1, column: 1 },
+        end: { line: 1, column: 2 },
+      },
+      parent: {
+        value: jsonValueNode,
+      },
+    }
+    jsonVisitors.JSONProperty?.({
+      key: jsonKeyNode,
+      value: jsonValueNode,
+    })
+
+    expect(report).not.toHaveBeenCalled()
   })
 })

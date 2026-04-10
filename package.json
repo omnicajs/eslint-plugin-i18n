@@ -4,11 +4,20 @@
   "description": "OmnicaJS wrapper for @intlify/eslint-plugin-vue-i18n",
   "license": "MIT",
   "type": "commonjs",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./validators/*": "./validators/*",
+    "./package.json": "./package.json"
+  },
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": [
     "dist",
-    "tests/fixtures"
+    "validators",
+    "README.md"
   ],
   "engines": {
     "node": ">=20.19.0"
@@ -38,6 +47,8 @@
     "@types/node": "^22.15.29",
     "@vitest/coverage-v8": "^4.1.3",
     "eslint": "^9.39.4",
+    "eslint-plugin-import": "^2.32.0",
+    "eslint-plugin-unused-imports": "^4.2.0",
     "typescript": "^5.6.0",
     "typescript-eslint": "^8.58.1",
     "vitest": "^4.1.3"

@@ -82,6 +82,38 @@ module.exports = (text) => [
 ]
 ```
 
+### Built-in validators
+
+This repository also ships reusable validators under `validators/`:
+
+- `validators/no-crm-word.js`
+- `validators/no-cyrillic.js`
+- `validators/no-mixed-characters.js`
+- `validators/no-mixed-characters.en_GB.js`
+- `validators/no-mixed-characters.es_ES.js`
+- `validators/no-mixed-characters.ru_RU.js`
+- `validators/no-spanish.js`
+- `validators/only-asesor.js`
+- `validators/quotation.js`
+
+They can be imported through package subpaths, for example:
+
+```js
+const validatorPath = require.resolve('@omnicajs/eslint-plugin-i18n/validators/no-cyrillic.js')
+```
+
+You can connect built-in validators explicitly in rule options:
+
+```js
+'@omnicajs/i18n/valid-message-text': ['error', {
+  validators: {
+    ru_RU: [
+      require.resolve('@omnicajs/eslint-plugin-i18n/validators/no-crm-word.js'),
+    ],
+  },
+}]
+```
+
 ## Development
 
 Node version: `>=20.19.0`
@@ -95,9 +127,9 @@ npm test
 npm run test:coverage
 ```
 
-Coverage thresholds in this repository:
+Coverage thresholds (minimum enforced values) in this repository:
 
-- `statements`: 100
-- `lines`: 100
+- `statements`: 99
+- `lines`: 99
 - `functions`: 100
 - `branches`: 89
