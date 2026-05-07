@@ -9,6 +9,7 @@
   },
   "include": [
     "index.ts",
+    "lib/**/*.ts",
     "rules/**/*.ts"
   ],
   "exclude": [

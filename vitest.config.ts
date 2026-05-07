@@ -6,7 +6,12 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       reportsDirectory: 'coverage',
-      include: ['dist/index.js', 'dist/rules/**/*.js'],
+      include: [
+        'dist/index.js',
+        'dist/lib/**/*.js',
+        'dist/rules/valid-message-text.js',
+        'dist/rules/visitors/index.js',
+      ],
       reporter: ['text', 'html', 'json', 'lcovonly'],
       thresholds: {
         statements: 99,

@@ -1,100 +1,55 @@
-import type { AST as JSONAST } from 'jsonc-eslint-parser'
-import type { AST as YAMLAST } from 'yaml-eslint-parser'
+import type { RuleContext, RuleListener } from '@intlify/eslint-plugin-vue-i18n/dist/types/index.js'
+import type { LocaleMessage } from '@intlify/eslint-plugin-vue-i18n/dist/utils/locale-messages.js'
+import type {
+  KeyPath,
+  MessageNode,
+} from './visitors/index.js'
+import type {
+  Locale,
+  ValidatorSource,
+} from '../lib/validators.js'
+import type { ForbidSettings } from '../lib/forbid.js'
 import { extname } from 'node:path'
 import debugBuilder from 'debug'
 import {
   defineCustomBlocksVisitor,
   getLocaleMessages,
-} from '@intlify/eslint-plugin-vue-i18n/dist/utils/index'
-import type { RuleContext, RuleListener } from '@intlify/eslint-plugin-vue-i18n/dist/types'
-import type { LocaleMessage } from '@intlify/eslint-plugin-vue-i18n/dist/utils/locale-messages'
-import { joinPath } from '@intlify/eslint-plugin-vue-i18n/dist/utils/key-path'
-import { createRule } from '@intlify/eslint-plugin-vue-i18n/dist/utils/rule'
+} from '@intlify/eslint-plugin-vue-i18n/dist/utils/index.js'
+import { joinPath } from '@intlify/eslint-plugin-vue-i18n/dist/utils/key-path.js'
+import { createRule } from '@intlify/eslint-plugin-vue-i18n/dist/utils/rule.js'
 import {
   getFilename,
   getSourceCode,
-} from '@intlify/eslint-plugin-vue-i18n/dist/utils/compat'
+} from '@intlify/eslint-plugin-vue-i18n/dist/utils/compat.js'
+import {
+  createForbiddenValidators,
+} from '../lib/forbid.js'
+import {
+  defineValidator,
+  getValidators,
+} from '../lib/validators.js'
+import {
+  createVisitorForJson,
+  createVisitorForYaml,
+  getMessage,
+} from './visitors/index.js'
 
 const debug = debugBuilder('eslint-plugin-i18n:valid-message-text')
-
-type Locale = string
-type ValidatorPath = string
-type ValidatorResult = [boolean, string]
-type Validator = (text: string) => ValidatorResult
-
-const getValidators = (
-  settings: Record<Locale, ValidatorPath[]> = {}
-): Record<Locale, Validator[]> => {
-  const validators: Record<Locale, Validator[]> = {}
-
-  for (const locale in settings) {
-    validators[locale] = settings[locale].map(modulePath => {
-      const fn = require(modulePath) as unknown
-
-      if (typeof fn === 'function') {
-        return fn as Validator
-      }
-
-      throw new Error(
-        `Module in path "${modulePath}" does not contain validation function`
-      )
-    })
-  }
-
-  return validators
-}
-
-function isLeafMessageNode(
-  node:
-    | JSONAST.JSONExpression
-    | YAMLAST.YAMLContent
-    | YAMLAST.YAMLWithMeta
-    | null
-): boolean {
-  if (node == null) {
-    return false
-  }
-  if (node.type === 'JSONLiteral') {
-    return !(node.value == null && node.regex == null && node.bigint == null)
-  }
-  if (node.type === 'JSONIdentifier' || node.type === 'JSONTemplateLiteral') {
-    return true
-  }
-  if (node.type === 'JSONUnaryExpression') {
-    return isLeafMessageNode(node.argument)
-  }
-  if (node.type === 'YAMLScalar') {
-    return node.value != null
-  }
-  if (node.type === 'YAMLWithMeta') {
-    return isLeafMessageNode(node.value)
-  }
-  return node.type === 'YAMLAlias'
-}
-
-function getMessage(node: JSONAST.JSONNode | YAMLAST.YAMLNode): string {
-  if (node.type === 'JSONLiteral' && typeof node.value === 'string') {
-    return node.value
-  }
-
-  if (node.type === 'YAMLScalar' && typeof node.value === 'string') {
-    return node.value
-  }
-
-  throw new Error('Incorrect node')
-}
 
 function create(context: RuleContext): RuleListener {
   const filename = getFilename(context)
   const sourceCode = getSourceCode(context)
   const validators = getValidators(
-    context.options[0]?.validators as Record<Locale, ValidatorPath[]> | undefined
+    context.options[0]?.validators as Record<Locale, ValidatorSource[]> | undefined
+  )
+  const forbiddenValidators = createForbiddenValidators(
+    context.options[0]?.forbid as ForbidSettings | undefined
   )
 
   function reportErrors(
-    keyPath: (string | number)[],
+    keyPath: KeyPath,
     errors: string[],
-    reportNode: JSONAST.JSONNode | YAMLAST.YAMLNode
+    reportNode: MessageNode
   ) {
     context.report({
       message: '\'{{path}}\' contains following errors: {{errors}}',
@@ -110,14 +65,14 @@ function create(context: RuleContext): RuleListener {
     type KeyStack =
       | {
           locale: null
-          node?: JSONAST.JSONNode | YAMLAST.YAMLNode
+          node?: MessageNode
           upper?: KeyStack
         }
       | {
           locale: string
-          node?: JSONAST.JSONNode | YAMLAST.YAMLNode
+          node?: MessageNode
           upper?: KeyStack
-          keyPath: (string | number)[]
+          keyPath: KeyPath
         }
 
     let keyStack: KeyStack
@@ -137,7 +92,7 @@ function create(context: RuleContext): RuleListener {
     return {
       enterKey(
         key: string | number,
-        node: JSONAST.JSONNode | YAMLAST.YAMLNode,
+        node: MessageNode,
         needsVerify: boolean
       ) {
         if (keyStack.locale == null) {
@@ -152,12 +107,17 @@ function create(context: RuleContext): RuleListener {
 
           if (needsVerify) {
             const parent = node.parent as
-              | { value?: JSONAST.JSONNode | YAMLAST.YAMLNode }
+              | { value?: MessageNode }
               | undefined
             const valueNode = parent?.value
             if (valueNode) {
               const text = getMessage(valueNode)
-              const errors = (validators[keyStack.locale] || [])
+              const activeValidators = [
+                ...(forbiddenValidators['*'] || []),
+                ...(forbiddenValidators[keyStack.locale] || []),
+                ...(validators[keyStack.locale] || []),
+              ]
+              const errors = activeValidators
                 .map(v => v(text))
                 .filter(([valid]) => !valid)
                 .map(([, error]) => error)
@@ -176,91 +136,10 @@ function create(context: RuleContext): RuleListener {
           }
         }
       },
-      leaveKey(node: JSONAST.JSONNode | YAMLAST.YAMLNode | null) {
+      leaveKey(node: MessageNode | null) {
         if (keyStack.node === node) {
           keyStack = keyStack.upper as KeyStack
         }
-      },
-    }
-  }
-
-  function createVisitorForJson(targetLocaleMessage: LocaleMessage): RuleListener {
-    const ctx = createVerifyContext(targetLocaleMessage)
-    return {
-      JSONProperty(node: JSONAST.JSONProperty) {
-        const key =
-          node.key.type === 'JSONLiteral' ? `${node.key.value}` : node.key.name
-
-        ctx.enterKey(key, node.key, isLeafMessageNode(node.value))
-      },
-      'JSONProperty:exit'(node: JSONAST.JSONProperty) {
-        ctx.leaveKey(node.key)
-      },
-      'JSONArrayExpression > *'(
-        node: JSONAST.JSONArrayExpression['elements'][number] & {
-          parent: JSONAST.JSONArrayExpression
-        }
-      ) {
-        const key = node.parent.elements.indexOf(node)
-        ctx.enterKey(key, node, isLeafMessageNode(node))
-      },
-      'JSONArrayExpression > *:exit'(
-        node: JSONAST.JSONArrayExpression['elements'][number]
-      ) {
-        ctx.leaveKey(node)
-      },
-    }
-  }
-
-  function createVisitorForYaml(targetLocaleMessage: LocaleMessage): RuleListener {
-    const yamlKeyNodes = new Set<YAMLAST.YAMLContent | YAMLAST.YAMLWithMeta>()
-
-    function withinKey(node: YAMLAST.YAMLNode) {
-      for (const keyNode of yamlKeyNodes) {
-        if (
-          keyNode.range[0] <= node.range[0] &&
-          node.range[0] < keyNode.range[1]
-        ) {
-          return true
-        }
-      }
-      return false
-    }
-
-    const ctx = createVerifyContext(targetLocaleMessage)
-
-    return {
-      YAMLPair(node: YAMLAST.YAMLPair) {
-        if (node.key != null) {
-          if (withinKey(node)) {
-            return
-          }
-          yamlKeyNodes.add(node.key)
-        }
-
-        if (node.key != null && node.key.type === 'YAMLScalar') {
-          const key = String(node.key.value)
-          ctx.enterKey(key, node.key, isLeafMessageNode(node.value))
-        }
-      },
-      'YAMLPair:exit'(node: YAMLAST.YAMLPair) {
-        if (node.key != null) {
-          ctx.leaveKey(node.key)
-        }
-      },
-      'YAMLSequence > *'(
-        node: YAMLAST.YAMLSequence['entries'][number] & {
-          parent: YAMLAST.YAMLSequence
-        }
-      ) {
-        if (withinKey(node)) {
-          return
-        }
-        const key = node.parent.entries.indexOf(node)
-        ctx.enterKey(key, node, isLeafMessageNode(node))
-      },
-      'YAMLSequence > *:exit'(node: YAMLAST.YAMLSequence['entries'][number]) {
-        ctx.leaveKey(node)
       },
     }
   }
@@ -276,7 +155,7 @@ function create(context: RuleContext): RuleListener {
         if (!targetLocaleMessage) {
           return {}
         }
-        return createVisitorForJson(targetLocaleMessage)
+        return createVisitorForJson(targetLocaleMessage, createVerifyContext)
       },
       ctx => {
         const localeMessages = getLocaleMessages(context)
@@ -286,7 +165,7 @@ function create(context: RuleContext): RuleListener {
         if (!targetLocaleMessage) {
           return {}
         }
-        return createVisitorForYaml(targetLocaleMessage)
+        return createVisitorForYaml(targetLocaleMessage, createVerifyContext)
       }
     )
   }
@@ -300,10 +179,10 @@ function create(context: RuleContext): RuleListener {
     }
 
     if (sourceCode.parserServices.isJSON) {
-      return createVisitorForJson(targetLocaleMessage)
+      return createVisitorForJson(targetLocaleMessage, createVerifyContext)
     }
     if (sourceCode.parserServices.isYAML) {
-      return createVisitorForYaml(targetLocaleMessage)
+      return createVisitorForYaml(targetLocaleMessage, createVerifyContext)
     }
   }
 
@@ -330,11 +209,61 @@ const rule = createRule({
             patternProperties: {
               '^([a-zA-Z]{2,}[_-]{0,1}[a-zA-Z]*)$': {
                 type: 'array',
-                items: { type: 'string' },
+                items: {},
                 uniqueItems: true,
               },
             },
             additionalProperties: false,
+          },
+          forbid: {
+            type: 'object',
+            properties: {
+              words: {
+                type: 'array',
+                items: { type: 'string' },
+                uniqueItems: true,
+              },
+              patterns: {
+                type: 'array',
+                items: {},
+                uniqueItems: true,
+              },
+              locales: {
+                type: 'object',
+                additionalProperties: {
+                  type: 'object',
+                  properties: {
+                    words: {
+                      type: 'array',
+                      items: { type: 'string' },
+                      uniqueItems: true,
+                    },
+                    patterns: {
+                      type: 'array',
+                      items: {},
+                      uniqueItems: true,
+                    },
+                  },
+                  additionalProperties: false,
+                },
+              },
+            },
+            additionalProperties: {
+              type: 'object',
+              properties: {
+                words: {
+                  type: 'array',
+                  items: { type: 'string' },
+                  uniqueItems: true,
+                },
+                patterns: {
+                  type: 'array',
+                  items: {},
+                  uniqueItems: true,
+                },
+              },
+              additionalProperties: false,
+            },
           },
         },
       },
@@ -343,19 +272,5 @@ const rule = createRule({
   create,
 })
 
-type PrivateApi = {
-  getValidators: typeof getValidators
-  isLeafMessageNode: typeof isLeafMessageNode
-  getMessage: typeof getMessage
-  create: typeof create
-}
-
-;(rule as typeof rule & { __private: PrivateApi }).__private = {
-  getValidators,
-  isLeafMessageNode,
-  getMessage,
-  create,
-}
-
-/* c8 ignore next */
-export = rule
+export { defineValidator }
+export default rule

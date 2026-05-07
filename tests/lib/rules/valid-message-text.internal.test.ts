@@ -1,33 +1,34 @@
-import { dirname, join } from 'node:path'
-import { createRequire } from 'node:module'
-import { fileURLToPath } from 'node:url'
+import {
+  createForbiddenValidators,
+} from '../../../dist/lib/forbid.js'
+import {
+  defineValidator,
+  getValidators,
+} from '../../../dist/lib/validators.js'
+import {
+  getMessage,
+  isLeafMessageNode,
+} from '../../../dist/rules/visitors/index.js'
+import * as compat from '@intlify/eslint-plugin-vue-i18n/dist/utils/compat.js'
+import * as localeUtils from '@intlify/eslint-plugin-vue-i18n/dist/utils/index.js'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-const __dirname = dirname(fileURLToPath(import.meta.url))
-const require = createRequire(import.meta.url)
-const rule = require('../../../dist/rules/valid-message-text.js')
-const compat = require('@intlify/eslint-plugin-vue-i18n/dist/utils/compat')
-const localeUtils = require('@intlify/eslint-plugin-vue-i18n/dist/utils/index')
+const rule = (await import('../../../dist/rules/valid-message-text.js')).default
+const notAllowedValidator = await import('../../fixtures/valid-message-text/not-allowed.js')
+const notFunctionValidator = await import('../../fixtures/valid-message-text/not-function.js')
 
-const fixturesRoot = join(__dirname, '../../fixtures/valid-message-text')
+const createRuleListener = rule.create as unknown as (
+  context: Record<string, unknown>
+) => Record<string, (...args: unknown[]) => unknown>
 
-type PrivateApi = {
-  getValidators: (settings?: Record<string, string[]>) => Record<string, Array<(text: string) => [boolean, string]>>
-  isLeafMessageNode: (node: unknown) => boolean
-  getMessage: (node: unknown) => string
-  create: (context: Record<string, unknown>) => Record<string, (...args: unknown[]) => unknown>
-}
-
-const privateApi = (rule as typeof rule & { __private: PrivateApi }).__private
-
-describe('valid-message-text private API', () => {
+describe('valid-message-text internals', () => {
   beforeEach(() => {
     vi.restoreAllMocks()
   })
 
   it('loads validators and validates exported function modules', () => {
-    const validators = privateApi.getValidators({
-      foo: [join(fixturesRoot, 'not-allowed.js')],
+    const validators = getValidators({
+      foo: [notAllowedValidator],
     })
 
     expect(validators.foo).toHaveLength(1)
@@ -37,46 +38,90 @@ describe('valid-message-text private API', () => {
     ])
   })
 
-  it('loads built-in validators from repository validators directory', () => {
-    const validators = privateApi.getValidators({
-      ru_RU: [join(__dirname, '../../../validators/no-cyrillic.js')],
+  it('loads validators passed as imported modules or direct functions', () => {
+    const validator = (text: string): [boolean, string] => [
+      text !== 'inline-forbidden',
+      'Inline validator failed',
+    ]
+    const validators = getValidators({
+      foo: [{ default: validator }, validator],
     })
 
-    expect(validators.ru_RU).toHaveLength(1)
-    expect(validators.ru_RU[0]('text')).toEqual([true, ''])
-    expect(validators.ru_RU[0]('текст')[0]).toBe(false)
+    expect(validators.foo).toHaveLength(2)
+    expect(validators.foo[0]('inline-forbidden')).toEqual([
+      false,
+      'Inline validator failed',
+    ])
+    expect(validators.foo[1]('allowed')).toEqual([
+      true,
+      'Inline validator failed',
+    ])
   })
 
-  it('uses locale-specific mixed-character validators with different behavior', () => {
-    const validators = privateApi.getValidators({
-      en_GB: [join(__dirname, '../../../validators/no-mixed-characters.en_GB.js')],
-      es_ES: [join(__dirname, '../../../validators/no-mixed-characters.es_ES.js')],
+  it('loads registered validators by serializable option names', () => {
+    const validatorName = defineValidator(
+      'tests/registered-not-allowed',
+      notAllowedValidator
+    )
+    const validators = getValidators({
+      foo: [validatorName],
     })
 
-    expect(validators.en_GB[0]('áéíóú')[0]).toBe(false)
-    expect(validators.es_ES[0]('áéíóú')[0]).toBe(true)
+    expect(validators.foo[0]('not-allowed')[0]).toBe(false)
+  })
+
+  it('builds global and locale-specific forbid validators', () => {
+    const validators = createForbiddenValidators({
+      words: ['global'],
+      patterns: ['/glob[a-z]+/i', /regexp-instance/],
+      locales: {
+        foo: {
+          words: ['local'],
+          patterns: ['local-[0-9]+'],
+        },
+      },
+      bar: {
+        words: ['top-level-locale'],
+      },
+      ignored: null,
+    })
+
+    expect(validators['*'][0]('has global word')[0]).toBe(false)
+    expect(validators['*'][1]('GLOBAL pattern')[0]).toBe(false)
+    expect(validators['*'][2]('regexp-instance')[0]).toBe(false)
+    expect(validators.foo[0]('has local word')[0]).toBe(false)
+    expect(validators.foo[1]('local-12')[0]).toBe(false)
+    expect(validators.bar[0]('top-level-locale')[0]).toBe(false)
   })
 
   it('throws when validator module does not export a function', () => {
     expect(() =>
-      privateApi.getValidators({
-        foo: [join(fixturesRoot, 'not-function.js')],
+      getValidators({
+        foo: [notFunctionValidator],
       })
     ).toThrow('does not contain validation function')
   })
 
+  it('throws when validator name is not registered', () => {
+    expect(() =>
+      getValidators({
+        foo: ['tests/missing-validator'],
+      })
+    ).toThrow('is not registered')
+  })
+
   it('detects leaf nodes for JSON and YAML variants', () => {
-    expect(privateApi.isLeafMessageNode(null)).toBe(false)
+    expect(isLeafMessageNode(null)).toBe(false)
 
     expect(
-      privateApi.isLeafMessageNode({
+      isLeafMessageNode({
         type: 'JSONLiteral',
         value: 'hello',
       })
     ).toBe(true)
 
     expect(
-      privateApi.isLeafMessageNode({
+      isLeafMessageNode({
         type: 'JSONLiteral',
         value: null,
         regex: null,
@@ -85,19 +130,19 @@ describe('valid-message-text private API', () => {
     ).toBe(false)
 
     expect(
-      privateApi.isLeafMessageNode({
+      isLeafMessageNode({
         type: 'JSONIdentifier',
       })
     ).toBe(true)
 
     expect(
-      privateApi.isLeafMessageNode({
+      isLeafMessageNode({
         type: 'JSONTemplateLiteral',
       })
     ).toBe(true)
 
     expect(
-      privateApi.isLeafMessageNode({
+      isLeafMessageNode({
         type: 'JSONUnaryExpression',
         argument: {
           type: 'JSONLiteral',
@@ -107,21 +152,21 @@ describe('valid-message-text private API', () => {
     ).toBe(true)
 
     expect(
-      privateApi.isLeafMessageNode({
+      isLeafMessageNode({
         type: 'YAMLScalar',
         value: 'hello',
       })
     ).toBe(true)
 
     expect(
-      privateApi.isLeafMessageNode({
+      isLeafMessageNode({
         type: 'YAMLScalar',
         value: null,
       })
     ).toBe(false)
 
     expect(
-      privateApi.isLeafMessageNode({
+      isLeafMessageNode({
         type: 'YAMLWithMeta',
         value: {
           type: 'YAMLScalar',
@@ -131,13 +176,13 @@ describe('valid-message-text private API', () => {
     ).toBe(true)
 
     expect(
-      privateApi.isLeafMessageNode({
+      isLeafMessageNode({
         type: 'YAMLAlias',
       })
     ).toBe(true)
 
     expect(
-      privateApi.isLeafMessageNode({
+      isLeafMessageNode({
         type: 'JSONObjectExpression',
       })
     ).toBe(false)
@@ -145,28 +190,28 @@ describe('valid-message-text private API', () => {
 
   it('extracts message only from supported string nodes', () => {
     expect(
-      privateApi.getMessage({
+      getMessage({
         type: 'JSONLiteral',
         value: 'json-message',
       })
     ).toBe('json-message')
 
     expect(
-      privateApi.getMessage({
+      getMessage({
         type: 'YAMLScalar',
         value: 'yaml-message',
       })
     ).toBe('yaml-message')
 
     expect(() =>
-      privateApi.getMessage({
+      getMessage({
         type: 'JSONLiteral',
         value: 1,
       })
     ).toThrow('Incorrect node')
 
     expect(() =>
-      privateApi.getMessage({
+      getMessage({
         type: 'YAMLAlias',
       })
     ).toThrow('Incorrect node')
@@ -186,7 +231,7 @@ describe('valid-message-text private API', () => {
       report: vi.fn(),
     }
 
-    expect(privateApi.create(context)).toEqual({})
+    expect(createRuleListener(context)).toEqual({})
   })
 
   it('returns empty listener when locale message is not found for JSON/YAML files', () => {
@@ -206,7 +251,7 @@ describe('valid-message-text private API', () => {
       report: vi.fn(),
     }
 
-    expect(privateApi.create(context)).toEqual({})
+    expect(createRuleListener(context)).toEqual({})
   })
 
   it('reports JSON and YAML message errors through created visitors', () => {
@@ -229,14 +274,14 @@ describe('valid-message-text private API', () => {
       options: [
         {
           validators: {
-            foo: [join(fixturesRoot, 'not-allowed.js')],
+            foo: [notAllowedValidator],
           },
         },
       ],
       report,
     }
 
-    const jsonVisitors = privateApi.create(context)
+    const jsonVisitors = createRuleListener(context)
     const jsonValueNode = {
       type: 'JSONLiteral',
       value: 'not-allowed',
@@ -274,7 +319,7 @@ describe('valid-message-text private API', () => {
       }),
     })
 
-    const yamlVisitors = privateApi.create(context)
+    const yamlVisitors = createRuleListener(context)
     const yamlValueNode = {
       type: 'YAMLScalar',
       value: 'not-allowed',
@@ -353,7 +398,7 @@ describe('valid-message-text private API', () => {
       report: vi.fn(),
     }
 
-    const visitors = privateApi.create(context)
+    const visitors = createRuleListener(context)
     expect(defineCustomBlocksVisitorSpy).toHaveBeenCalledOnce()
     expect(visitors).toBeTypeOf('object')
   })
@@ -377,14 +422,14 @@ describe('valid-message-text private API', () => {
       options: [
         {
           validators: {
-            foo: [join(fixturesRoot, 'not-allowed.js')],
+            foo: [notAllowedValidator],
           },
         },
       ],
       report: vi.fn(),
     }
 
-    const visitors = privateApi.create(context)
+    const visitors = createRuleListener(context)
     const keyNode = {
       type: 'YAMLScalar',
       value: 'list',
@@ -468,7 +513,7 @@ describe('valid-message-text private API', () => {
       report: vi.fn(),
     }
 
-    const visitors = privateApi.create(context)
+    const visitors = createRuleListener(context)
     const localeKey = {
       type: 'JSONLiteral',
       value: 'foo',
@@ -526,7 +571,7 @@ describe('valid-message-text private API', () => {
       report,
     }
 
-    const jsonVisitors = privateApi.create(context)
+    const jsonVisitors = createRuleListener(context)
     const jsonValueNode = {
       type: 'JSONLiteral',
       value: 'CRM',

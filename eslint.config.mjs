@@ -65,6 +65,18 @@ export default [
       }],
       'no-new-wrappers': 'error',
       'no-prototype-builtins': 'error',
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              message: 'Only type imports are allowed.',
+              name: '@typescript-eslint/types',
+              allowTypeImports: true,
+            },
+          ],
+        },
+      ],
       'no-shadow-restricted-names': 'error',
       'no-throw-literal': 'error',
       'no-trailing-spaces': ['error'],

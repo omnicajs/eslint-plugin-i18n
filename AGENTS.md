@@ -36,7 +36,6 @@ high-confidence automated checks.
 - This project is a single-package TypeScript ESLint plugin.
 - Main source directories:
   - `rules/**` - custom ESLint rule implementations;
-  - `validators/**` - reusable text validators for locale message checks;
   - `tests/lib/**` - RuleTester-based behavior tests;
   - `tests/fixtures/**` - fixture files for validators and lint inputs.
 - Main plugin entry point: `index.ts`.

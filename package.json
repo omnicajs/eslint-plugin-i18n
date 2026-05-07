@@ -3,27 +3,25 @@
   "version": "1.0.0",
   "description": "OmnicaJS wrapper for @intlify/eslint-plugin-vue-i18n",
   "license": "MIT",
-  "type": "commonjs",
+  "type": "module",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     },
-    "./validators/*": "./validators/*",
     "./package.json": "./package.json"
   },
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": [
     "dist",
-    "validators",
     "README.md"
   ],
   "engines": {
     "node": ">=20.19.0"
   },
   "scripts": {
-    "build": "tsc --project tsconfig.build.json",
+    "build": "node --eval \"fs.rmSync('dist', { recursive: true, force: true })\" && tsc --project tsconfig.build.json",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "test": "npm run build && vitest run",

@@ -8,7 +8,7 @@ This package provides:
 
 - pass-through access to upstream Vue i18n rules;
 - namespace remapping from `@intlify/vue-i18n/*` to `@omnicajs/i18n/*`;
-- flat and legacy shared configs;
+- flat shared configs;
 - custom rule `valid-message-text` with external validator functions.
 
 ## Installation
@@ -24,7 +24,12 @@ npm install --save-dev eslint @omnicajs/eslint-plugin-i18n
 ### Flat Config (`eslint.config.js`)
 
 ```js
-import i18n from '@omnicajs/eslint-plugin-i18n'
+import i18n, { defineValidator } from '@omnicajs/eslint-plugin-i18n'
+
+const noCrmWord = defineValidator(
+  'project/no-crm-word',
+  await import('/absolute/path/to/validator.js')
+)
 
 export default [
   ...i18n.configs.recommended,
@@ -32,20 +37,20 @@ export default [
     rules: {
       '@omnicajs/i18n/valid-message-text': ['error', {
         validators: {
-          ru: ['/absolute/path/to/validator.js'],
+          ru: [noCrmWord],
+        },
+        forbid: {
+          words: ['forbidden'],
+          locales: {
+            ru: {
+              patterns: ['/test/i'],
+            },
+          },
         },
       }],
     },
   },
 ]
-```
-
-### Legacy Config (`.eslintrc.js`)
-
-```js
-module.exports = {
-  extends: ['plugin:@omnicajs/i18n/recommended-legacy'],
-}
 ```
 
 ## Configs
@@ -56,8 +61,6 @@ Available exported configs:
 - `configs.recommended`
 - `configs['flat/base']`
 - `configs['flat/recommended']`
-- `configs['base-legacy']`
-- `configs['recommended-legacy']`
 
 ## Rule: `valid-message-text`
 
@@ -69,47 +72,64 @@ Rule option shape:
 ```ts
 type RuleOptions = [{
   validators?: Record<string, string[]>
+  forbid?: {
+    words?: string[]
+    patterns?: Array<string | RegExp>
+    locales?: Record<string, {
+      words?: string[]
+      patterns?: Array<string | RegExp>
+    }>
+  }
 }]
 ```
 
-Each validator module path must resolve to a function:
+Load validators with dynamic import in flat config, register them with
+`defineValidator()`, and pass the returned string names to rule options:
 
 ```js
-// validator.js
-module.exports = (text) => [
+import i18n, { defineValidator } from '@omnicajs/eslint-plugin-i18n'
+
+const noEmpty = (text) => [
   text.length > 0,
   'Message must not be empty',
 ]
+
+const noEmptyName = defineValidator('no-empty', noEmpty)
+const noCrmName = defineValidator(
+  'project/no-crm-word',
+  await import('./eslint/validators/no-crm-word.js')
+)
+
+export default [
+  ...i18n.configs.recommended,
+  {
+    rules: {
+      '@omnicajs/i18n/valid-message-text': ['error', {
+        validators: {
+          ru_RU: [noEmptyName, noCrmName],
+        },
+      }],
+    },
+  },
+]
 ```
 
-### Built-in validators
+Validator files are not published with this package; pass project-local or
+package-external validators from your ESLint config.
 
-This repository also ships reusable validators under `validators/`:
-
-- `validators/no-crm-word.js`
-- `validators/no-cyrillic.js`
-- `validators/no-mixed-characters.js`
-- `validators/no-mixed-characters.en_GB.js`
-- `validators/no-mixed-characters.es_ES.js`
-- `validators/no-mixed-characters.ru_RU.js`
-- `validators/no-spanish.js`
-- `validators/only-asesor.js`
-- `validators/quotation.js`
-
-They can be imported through package subpaths, for example:
-
-```js
-const validatorPath = require.resolve('@omnicajs/eslint-plugin-i18n/validators/no-cyrillic.js')
-```
-
-You can connect built-in validators explicitly in rule options:
+`forbid` checks are applied before custom validators. Top-level `words` and
+`patterns` are global; locale-specific checks can be placed under `locales`:
 
 ```js
 '@omnicajs/i18n/valid-message-text': ['error', {
-  validators: {
-    ru_RU: [
-      require.resolve('@omnicajs/eslint-plugin-i18n/validators/no-crm-word.js'),
-    ],
+  forbid: {
+    words: ['CRM'],
+    patterns: [/old-term/i],
+    locales: {
+      es_ES: {
+        words: ['asesor'],
+      },
+    },
   },
 }]
 ```
