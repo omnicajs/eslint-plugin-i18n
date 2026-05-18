@@ -95,7 +95,7 @@ npm run build
 - Coverage thresholds source of truth: `vitest.config.ts`.
 
 ## Local Skills
-- `skills/commit-workflow/SKILL.md` - rules for splitting changes into commits
+- `.agents/skills/commit-workflow/SKILL.md` - rules for splitting changes into commits
   and writing changelog-friendly Conventional Commit messages.
-- `skills/coverage-recovery/SKILL.md` - workflow for analyzing uncovered code
+- `.agents/skills/coverage-recovery/SKILL.md` - workflow for analyzing uncovered code
   paths and improving test coverage without adding artificial tests.
