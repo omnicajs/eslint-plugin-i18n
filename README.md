@@ -7,7 +7,8 @@ ESLint plugin that wraps `@intlify/eslint-plugin-vue-i18n` and adds custom rules
 This package provides:
 
 - pass-through access to upstream Vue i18n rules;
-- namespace remapping from `@intlify/vue-i18n/*` to `@omnicajs/i18n/*`;
+- exported config rule ids remapped from the upstream
+  `@intlify/vue-i18n/*` namespace to `@omnicajs/i18n/*`;
 - flat shared configs;
 - custom rule `valid-message-text` with external validator functions.
 
@@ -61,6 +62,22 @@ Available exported configs:
 - `configs.recommended`
 - `configs['flat/base']`
 - `configs['flat/recommended']`
+
+Upstream rule ids in exported configs are rewritten to the local namespace. When
+using this package, configure upstream Vue i18n rules with `@omnicajs/i18n/*`
+rule ids:
+
+```js
+export default [
+  ...i18n.configs.recommended,
+  {
+    rules: {
+      // Upstream: '@intlify/vue-i18n/no-missing-keys'
+      '@omnicajs/i18n/no-missing-keys': 'error',
+    },
+  },
+]
+```
 
 ## Rule: `valid-message-text`
 
