@@ -6,8 +6,12 @@ import {
   getValidators,
 } from '../../../dist/lib/validators.js'
 import {
+  getJsonMessage,
   getMessage,
+  getYamlMessage,
+  isLeafJsonMessageNode,
   isLeafMessageNode,
+  isLeafYamlMessageNode,
 } from '../../../dist/rules/visitors/index.js'
 import * as compat from '@intlify/eslint-plugin-vue-i18n/dist/utils/compat.js'
 import * as localeUtils from '@intlify/eslint-plugin-vue-i18n/dist/utils/index.js'
@@ -188,7 +192,71 @@ describe('valid-message-text internals', () => {
     ).toBe(false)
   })
 
+  it('detects leaf nodes through split JSON and YAML helpers', () => {
+    expect(isLeafJsonMessageNode(null)).toBe(false)
+    expect(
+      isLeafJsonMessageNode({
+        type: 'JSONIdentifier',
+      })
+    ).toBe(true)
+    expect(
+      isLeafJsonMessageNode({
+        type: 'JSONObjectExpression',
+      })
+    ).toBe(false)
+
+    expect(isLeafYamlMessageNode(null)).toBe(false)
+    expect(
+      isLeafYamlMessageNode({
+        type: 'YAMLAlias',
+      })
+    ).toBe(true)
+    expect(
+      isLeafYamlMessageNode({
+        type: 'YAMLMapping',
+      })
+    ).toBe(false)
+  })
+
   it('extracts message only from supported string nodes', () => {
+    expect(
+      getJsonMessage({
+        type: 'JSONLiteral',
+        value: 'json-helper-message',
+      })
+    ).toBe('json-helper-message')
+    expect(
+      getJsonMessage({
+        type: 'JSONLiteral',
+        value: 1,
+      })
+    ).toBeNull()
+    expect(
+      getJsonMessage({
+        type: 'YAMLScalar',
+        value: 'yaml-message',
+      })
+    ).toBeNull()
+
+    expect(
+      getYamlMessage({
+        type: 'YAMLScalar',
+        value: 'yaml-helper-message',
+      })
+    ).toBe('yaml-helper-message')
+    expect(
+      getYamlMessage({
+        type: 'YAMLScalar',
+        value: 1,
+      })
+    ).toBeNull()
+    expect(
+      getYamlMessage({
+        type: 'JSONLiteral',
+        value: 'json-message',
+      })
+    ).toBeNull()
+
     expect(
       getMessage({
         type: 'JSONLiteral',

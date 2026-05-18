@@ -10,7 +10,7 @@ export default defineConfig({
         'dist/index.js',
         'dist/lib/**/*.js',
         'dist/rules/valid-message-text.js',
-        'dist/rules/visitors/index.js',
+        'dist/rules/visitors/**/*.js',
       ],
       reporter: ['text', 'html', 'json', 'json-summary', 'lcovonly'],
       thresholds: {
