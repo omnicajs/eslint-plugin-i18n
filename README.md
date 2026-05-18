@@ -133,23 +133,3 @@ package-external validators from your ESLint config.
   },
 }]
 ```
-
-## Development
-
-Node version: `>=20.19.0`
-
-Main commands:
-
-```bash
-npm run build
-npm run lint
-npm test
-npm run test:coverage
-```
-
-Coverage thresholds (minimum enforced values) in this repository:
-
-- `statements`: 99
-- `lines`: 99
-- `functions`: 100
-- `branches`: 89
