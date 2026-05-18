@@ -1,5 +1,7 @@
 # @omnicajs/eslint-plugin-i18n
 
+[![npm version](https://img.shields.io/npm/v/@omnicajs/eslint-plugin-i18n.svg)](https://www.npmjs.com/package/@omnicajs/eslint-plugin-i18n)
+
 ESLint plugin that wraps `@intlify/eslint-plugin-vue-i18n` and adds custom rules.
 
 ## Description
@@ -14,11 +16,15 @@ This package provides:
 
 ## Installation
 
-Install ESLint and the plugin:
+Install the plugin and its peer dependencies:
 
 ```bash
-npm install --save-dev eslint @omnicajs/eslint-plugin-i18n
+npm install --save-dev eslint @omnicajs/eslint-plugin-i18n @intlify/eslint-plugin-vue-i18n@^4.3.0 jsonc-eslint-parser vue-eslint-parser yaml-eslint-parser
 ```
+
+This package is developed against
+`@intlify/eslint-plugin-vue-i18n` 4.3.x. See the upstream rule documentation in
+the [Intlify Vue i18n ESLint plugin docs](https://eslint-plugin-vue-i18n.intlify.dev/).
 
 ## Usage
 
