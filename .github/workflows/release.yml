@@ -6,17 +6,39 @@ on:
       - 'v*'
 
 permissions:
-  actions: read
-  contents: write
-  id-token: write
+  contents: read
 
 concurrency:
   group: release-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
-  release:
+  detect-publish-auth:
+    name: Detect publish auth
     runs-on: ubuntu-24.04
+
+    outputs:
+      has-npm-token: ${{ steps.detect.outputs.has-npm-token }}
+
+    steps:
+      - name: Detect npm token
+        id: detect
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          if [ -n "$NPM_TOKEN" ]; then
+            echo "has-npm-token=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has-npm-token=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  release-checks:
+    name: Release checks
+    runs-on: ubuntu-24.04
+
+    permissions:
+      actions: read
+      contents: read
 
     steps:
       - name: Checkout
@@ -77,14 +99,71 @@ jobs:
           path: coverage/
           retention-days: 90
 
+  publish-token:
+    name: Publish to npm with token
+    runs-on: ubuntu-24.04
+    needs: [detect-publish-auth, release-checks]
+    if: ${{ needs.detect-publish-auth.outputs.has-npm-token == 'true' }}
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js and dependencies
+        uses: ./.github/actions/setup-node-deps
+        with:
+          node-version: 24.x
+          cache-key-suffix: release-publish-token
+          registry-url: https://registry.npmjs.org
+
       - name: Build package
         run: npm run build
 
-      - name: Publish to npm
+      - name: Publish to npm with token
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: npm publish --access public
 
+  publish-trusted:
+    name: Publish to npm with trusted publishing
+    runs-on: ubuntu-24.04
+    needs: [detect-publish-auth, release-checks]
+    if: ${{ needs.detect-publish-auth.outputs.has-npm-token == 'false' }}
+
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js and dependencies
+        uses: ./.github/actions/setup-node-deps
+        with:
+          node-version: 24.x
+          cache-key-suffix: release-publish-trusted
+          registry-url: https://registry.npmjs.org
+
+      - name: Build package
+        run: npm run build
+
+      - name: Publish to npm with trusted publishing
+        run: npm publish --access public
+
+  github-release:
+    name: Create GitHub Release
+    runs-on: ubuntu-24.04
+    needs: [publish-token, publish-trusted]
+    if: ${{ always() && (needs.publish-token.result == 'success' || needs.publish-trusted.result == 'success') }}
+
+    permissions:
+      contents: write
+
+    steps:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
