@@ -14,10 +14,10 @@ export default defineConfig({
       ],
       reporter: ['text', 'html', 'json', 'json-summary', 'lcovonly'],
       thresholds: {
-        statements: 99,
-        branches: 89,
+        statements: 100,
+        branches: 100,
         functions: 100,
-        lines: 99,
+        lines: 100,
       },
     },
   },

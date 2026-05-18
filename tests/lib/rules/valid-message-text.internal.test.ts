@@ -48,15 +48,19 @@ describe('valid-message-text internals', () => {
       'Inline validator failed',
     ]
     const validators = getValidators({
-      foo: [{ default: validator }, validator],
+      foo: [{ default: validator }, { validate: validator }, validator],
     })
 
-    expect(validators.foo).toHaveLength(2)
+    expect(validators.foo).toHaveLength(3)
     expect(validators.foo[0]('inline-forbidden')).toEqual([
       false,
       'Inline validator failed',
     ])
-    expect(validators.foo[1]('allowed')).toEqual([
+    expect(validators.foo[1]('inline-forbidden')).toEqual([
+      false,
+      'Inline validator failed',
+    ])
+    expect(validators.foo[2]('allowed')).toEqual([
       true,
       'Inline validator failed',
     ])
@@ -526,6 +530,33 @@ describe('valid-message-text internals', () => {
       range: [1, 2],
     })
 
+    const nonScalarKeyNode = {
+      type: 'YAMLAlias',
+      value: 'aliasKey',
+      range: [40, 45],
+      parent: {
+        value: {
+          type: 'YAMLScalar',
+          value: 'allowed',
+        },
+      },
+    }
+
+    visitors.YAMLPair?.({
+      key: nonScalarKeyNode,
+      value: nonScalarKeyNode.parent.value,
+      range: [40, 55],
+    })
+
+    visitors.YAMLPair?.({
+      key: null,
+      value: {
+        type: 'YAMLScalar',
+        value: 'allowed',
+      },
+      range: [60, 70],
+    })
+
     const seqEntryInsideKey = {
       type: 'YAMLScalar',
       value: 'not-allowed',
@@ -558,6 +589,9 @@ describe('valid-message-text internals', () => {
     visitors['YAMLSequence > *:exit']?.(seqEntry)
     visitors['YAMLPair:exit']?.({
       key: keyNode,
+    })
+    visitors['YAMLPair:exit']?.({
+      key: null,
     })
   })
 
@@ -600,6 +634,25 @@ describe('valid-message-text internals', () => {
 
     visitors.JSONProperty?.(localeProperty)
     visitors['JSONProperty:exit']?.(localeProperty)
+
+    const identifierLocaleKey = {
+      type: 'JSONIdentifier',
+      name: 'bar',
+      loc: {
+        start: { line: 2, column: 1 },
+        end: { line: 2, column: 4 },
+      },
+    }
+    const identifierLocaleProperty = {
+      key: identifierLocaleKey,
+      value: {
+        type: 'JSONObjectExpression',
+      },
+    }
+    identifierLocaleKey.parent = identifierLocaleProperty
+
+    visitors.JSONProperty?.(identifierLocaleProperty)
+    visitors['JSONProperty:exit']?.(identifierLocaleProperty)
 
     const arrayEntry = {
       type: 'JSONLiteral',
@@ -658,6 +711,52 @@ describe('valid-message-text internals', () => {
     jsonVisitors.JSONProperty?.({
       key: jsonKeyNode,
       value: jsonValueNode,
+    })
+
+    const jsonIdentifierKeyNode = {
+      type: 'JSONIdentifier',
+      name: 'b',
+      loc: {
+        start: { line: 2, column: 1 },
+        end: { line: 2, column: 2 },
+      },
+      parent: {
+        value: {
+          type: 'JSONLiteral',
+          value: 'allowed',
+        },
+      },
+    }
+    jsonVisitors.JSONProperty?.({
+      key: jsonIdentifierKeyNode,
+      value: jsonIdentifierKeyNode.parent.value,
+    })
+
+    const jsonObjectKeyNode = {
+      type: 'JSONLiteral',
+      value: 'nested',
+      loc: {
+        start: { line: 3, column: 1 },
+        end: { line: 3, column: 7 },
+      },
+      parent: {
+        value: {
+          type: 'JSONObjectExpression',
+        },
+      },
+    }
+    jsonVisitors.JSONProperty?.({
+      key: jsonObjectKeyNode,
+      value: jsonObjectKeyNode.parent.value,
+    })
+    jsonVisitors['JSONProperty:exit']?.({
+      key: {
+        type: 'JSONLiteral',
+        value: 'different',
+      },
+    })
+    jsonVisitors['JSONProperty:exit']?.({
+      key: jsonObjectKeyNode,
     })
 
     expect(report).not.toHaveBeenCalled()

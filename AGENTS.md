@@ -86,12 +86,8 @@ npm run build
 - Rule changes must include both valid and invalid scenarios in tests.
 - Prefer behavior-oriented tests through ESLint RuleTester over brittle
   implementation-coupled checks.
-- Keep functions coverage threshold strict (100% minimum).
-- Keep statements and lines thresholds high and stable for transpiled output
-  (99% minimum each).
-- Keep branch coverage threshold as high as practical for this codebase's
-  transpiled runtime target (89% minimum) unless explicitly changed by the
-  user.
+- Keep statements, lines, functions, and branches coverage thresholds strict
+  (100% minimum each).
 - Coverage thresholds source of truth: `vitest.config.ts`.
 
 ## Local Skills

@@ -113,7 +113,7 @@ function create(context: RuleContext): RuleListener {
             if (valueNode) {
               const text = getMessage(valueNode)
               const activeValidators = [
-                ...(forbiddenValidators['*'] || []),
+                ...forbiddenValidators['*'],
                 ...(forbiddenValidators[keyStack.locale] || []),
                 ...(validators[keyStack.locale] || []),
               ]
@@ -181,9 +181,7 @@ function create(context: RuleContext): RuleListener {
     if (sourceCode.parserServices.isJSON) {
       return createVisitorForJson(targetLocaleMessage, createVerifyContext)
     }
-    if (sourceCode.parserServices.isYAML) {
-      return createVisitorForYaml(targetLocaleMessage, createVerifyContext)
-    }
+    return createVisitorForYaml(targetLocaleMessage, createVerifyContext)
   }
 
   debug(`ignore ${filename} in valid-message-text`)

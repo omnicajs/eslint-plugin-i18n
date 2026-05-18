@@ -61,7 +61,7 @@ Coverage thresholds are enforced in `vitest.config.ts`.
 
 Minimum values:
 
-- `statements`: 99
-- `lines`: 99
+- `statements`: 100
+- `lines`: 100
 - `functions`: 100
-- `branches`: 89
+- `branches`: 100

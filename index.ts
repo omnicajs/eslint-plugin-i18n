@@ -10,10 +10,10 @@ const UPSTREAM_NAMESPACE = '@intlify/vue-i18n'
 const NAMESPACE = '@omnicajs/i18n'
 
 function mapRuleIds(
-  rules?: Record<string, unknown>
+  rules: Record<string, unknown>
 ): Record<string, unknown> {
   const mapped: Record<string, unknown> = {}
-  for (const [ruleId, value] of Object.entries(rules || {})) {
+  for (const [ruleId, value] of Object.entries(rules)) {
     mapped[ruleId.replace(UPSTREAM_NAMESPACE, NAMESPACE)] = value
   }
   return mapped
@@ -85,7 +85,7 @@ const flatRecommended = [
         rules?: Record<string, unknown>
       }>)
         .find(config => config.name === `${UPSTREAM_NAMESPACE}:recommended:rules`)
-        ?.rules
+        ?.rules as Record<string, unknown>
     ),
   },
 ]
