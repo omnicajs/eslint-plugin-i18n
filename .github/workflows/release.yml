@@ -196,7 +196,7 @@ jobs:
       - name: Push release commit and tags
         if: ${{ steps.release-meta.outputs.created == 'true' }}
         run: |
-          git push origin "HEAD:${GITHUB_REF_NAME}" --follow-tags
+          git push origin "HEAD:${GITHUB_REF_NAME}" "refs/tags/${{ steps.release-meta.outputs.tag }}"
 
   publish-token:
     name: Publish to npm with token
