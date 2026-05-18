@@ -1,9 +1,33 @@
 name: Release
 
 on:
-  push:
-    tags:
-      - 'v*'
+  workflow_dispatch:
+    inputs:
+      release:
+        description: Release type
+        required: true
+        default: auto
+        type: choice
+        options:
+          - auto
+          - patch
+          - minor
+          - major
+      prerelease:
+        description: Prerelease channel
+        required: true
+        default: none
+        type: choice
+        options:
+          - none
+          - alpha
+          - beta
+          - rc
+      npm_tag:
+        description: npm dist-tag for publication
+        required: true
+        default: latest
+        type: string
 
 permissions:
   contents: read
@@ -32,19 +56,31 @@ jobs:
             echo "has-npm-token=false" >> "$GITHUB_OUTPUT"
           fi
 
-  release-checks:
-    name: Release checks
+  release:
+    name: Prepare release
     runs-on: ubuntu-24.04
 
     permissions:
       actions: read
-      contents: read
+      contents: write
+
+    outputs:
+      release_tag: ${{ steps.release-meta.outputs.tag }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
+      - name: Validate release branch and npm tag
+        env:
+          NPM_TAG: ${{ inputs.npm_tag }}
+        run: |
+          if [ "$NPM_TAG" = "latest" ] && [ "$GITHUB_REF" != "refs/heads/main" ]; then
+            echo "Release to npm tag 'latest' must be started from the main branch."
+            exit 1
+          fi
 
       - name: Setup Node.js and dependencies
         uses: ./.github/actions/setup-node-deps
@@ -53,16 +89,10 @@ jobs:
           cache-key-suffix: release
           registry-url: https://registry.npmjs.org
 
-      - name: Verify tag matches package version
-        shell: bash
+      - name: Configure git user
         run: |
-          TAG_VERSION="${GITHUB_REF_NAME#v}"
-          PACKAGE_VERSION="$(node -p "require('./package.json').version")"
-
-          if [ "$TAG_VERSION" != "$PACKAGE_VERSION" ]; then
-            echo "Tag version ($TAG_VERSION) does not match package.json version ($PACKAGE_VERSION)"
-            exit 1
-          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
       - name: Run checks
         run: |
@@ -101,18 +131,87 @@ jobs:
           retention-days: 90
           overwrite: true
 
+      - name: Resolve version bump
+        id: version-bump
+        env:
+          RELEASE_TYPE: ${{ inputs.release }}
+          PRERELEASE: ${{ inputs.prerelease }}
+        run: |
+          set -euo pipefail
+
+          case "$RELEASE_TYPE:$PRERELEASE" in
+            auto:none)
+              VERSION_BUMP="patch"
+              ;;
+            patch:none|minor:none|major:none)
+              VERSION_BUMP="$RELEASE_TYPE"
+              ;;
+            auto:alpha|auto:beta|auto:rc)
+              VERSION_BUMP="prerelease --preid $PRERELEASE"
+              ;;
+            patch:alpha|patch:beta|patch:rc)
+              VERSION_BUMP="prepatch --preid $PRERELEASE"
+              ;;
+            minor:alpha|minor:beta|minor:rc)
+              VERSION_BUMP="preminor --preid $PRERELEASE"
+              ;;
+            major:alpha|major:beta|major:rc)
+              VERSION_BUMP="premajor --preid $PRERELEASE"
+              ;;
+            *)
+              echo "Unsupported release/prerelease combination: $RELEASE_TYPE/$PRERELEASE"
+              exit 1
+              ;;
+          esac
+
+          echo "value=$VERSION_BUMP" >> "$GITHUB_OUTPUT"
+
+      - name: Create release commit and tag
+        id: release-meta
+        env:
+          VERSION_BUMP: ${{ steps.version-bump.outputs.value }}
+        run: |
+          set -euo pipefail
+
+          # shellcheck disable=SC2206
+          VERSION_ARGS=($VERSION_BUMP)
+          npm version "${VERSION_ARGS[@]}" --no-git-tag-version
+
+          version="$(node -p "require('./package.json').version")"
+          tag="v${version}"
+          echo "tag=${tag}" >> "$GITHUB_OUTPUT"
+
+          if git ls-remote --exit-code --tags origin "refs/tags/${tag}" >/dev/null 2>&1; then
+            echo "${tag} already exists; reusing it for release rerun."
+            echo "created=false" >> "$GITHUB_OUTPUT"
+            git reset --hard
+            exit 0
+          fi
+
+          git add package.json package-lock.json
+          git commit -m "chore(release): ${tag}"
+          git tag "${tag}"
+          echo "created=true" >> "$GITHUB_OUTPUT"
+
+      - name: Push release commit and tags
+        if: ${{ steps.release-meta.outputs.created == 'true' }}
+        run: |
+          git push origin "HEAD:${GITHUB_REF_NAME}" --follow-tags
+
   publish-token:
     name: Publish to npm with token
     runs-on: ubuntu-24.04
-    needs: [detect-publish-auth, release-checks]
+    needs: [detect-publish-auth, release]
     if: ${{ needs.detect-publish-auth.outputs.has-npm-token == 'true' }}
 
     permissions:
       contents: read
 
     steps:
-      - name: Checkout
+      - name: Checkout release tag
         uses: actions/checkout@v4
+        with:
+          ref: refs/tags/${{ needs.release.outputs.release_tag }}
 
       - name: Setup Node.js and dependencies
         uses: ./.github/actions/setup-node-deps
@@ -142,12 +241,13 @@ jobs:
         if: ${{ steps.npm-version.outputs.published == 'false' }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: npm publish --access public
+          NPM_TAG: ${{ inputs.npm_tag }}
+        run: npm publish --access public --tag "$NPM_TAG"
 
   publish-trusted:
     name: Publish to npm with trusted publishing
     runs-on: ubuntu-24.04
-    needs: [detect-publish-auth, release-checks]
+    needs: [detect-publish-auth, release]
     if: ${{ needs.detect-publish-auth.outputs.has-npm-token == 'false' }}
 
     permissions:
@@ -155,8 +255,10 @@ jobs:
       id-token: write
 
     steps:
-      - name: Checkout
+      - name: Checkout release tag
         uses: actions/checkout@v4
+        with:
+          ref: refs/tags/${{ needs.release.outputs.release_tag }}
 
       - name: Setup Node.js and dependencies
         uses: ./.github/actions/setup-node-deps
@@ -184,12 +286,14 @@ jobs:
 
       - name: Publish to npm with trusted publishing
         if: ${{ steps.npm-version.outputs.published == 'false' }}
-        run: npm publish --access public
+        env:
+          NPM_TAG: ${{ inputs.npm_tag }}
+        run: npm publish --access public --tag "$NPM_TAG"
 
   github-release:
     name: Create GitHub Release
     runs-on: ubuntu-24.04
-    needs: [publish-token, publish-trusted]
+    needs: [release, publish-token, publish-trusted]
     if: ${{ always() && (needs.publish-token.result == 'success' || needs.publish-trusted.result == 'success') }}
 
     permissions:
@@ -199,4 +303,5 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ needs.release.outputs.release_tag }}
           generate_release_notes: true
