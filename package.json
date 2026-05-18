@@ -26,6 +26,7 @@
     "lint:fix": "eslint . --fix",
     "test": "npm run build && vitest run",
     "test:coverage": "npm run build && vitest run --coverage",
+    "coverage:report": "node scripts/coverage-report.mjs",
     "prepublishOnly": "npm run build"
   },
   "dependencies": {

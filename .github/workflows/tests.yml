@@ -6,6 +6,10 @@ on:
     branches:
       - main
 
+permissions:
+  actions: read
+  contents: read
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -70,6 +74,30 @@ jobs:
 
       - name: Run coverage
         run: npm run test:coverage
+
+      - name: Download baseline coverage summary
+        continue-on-error: true
+        env:
+          BASE_BRANCH: ${{ github.event_name == 'pull_request' && github.base_ref || github.ref_name }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p .coverage-baseline
+          RUN_ID="$(gh run list --workflow tests.yml --branch "$BASE_BRANCH" --status success --limit 1 --json databaseId --jq '.[0].databaseId // empty')"
+
+          if [ -n "$RUN_ID" ]; then
+            gh run download "$RUN_ID" --name coverage-summary --dir .coverage-baseline || true
+          fi
+
+      - name: Report coverage
+        run: npm run coverage:report -- --baseline .coverage-baseline/coverage-summary.json --title "Coverage"
+
+      - name: Upload coverage summary artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-summary
+          path: coverage/coverage-summary.json
+          retention-days: 14
 
       - name: Upload coverage artifact
         uses: actions/upload-artifact@v4

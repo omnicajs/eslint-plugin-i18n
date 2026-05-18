@@ -12,7 +12,7 @@ export default defineConfig({
         'dist/rules/valid-message-text.js',
         'dist/rules/visitors/index.js',
       ],
-      reporter: ['text', 'html', 'json', 'lcovonly'],
+      reporter: ['text', 'html', 'json', 'json-summary', 'lcovonly'],
       thresholds: {
         statements: 99,
         branches: 89,

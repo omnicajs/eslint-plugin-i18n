@@ -6,6 +6,7 @@ on:
       - 'v*'
 
 permissions:
+  actions: read
   contents: write
   id-token: write
 
@@ -44,7 +45,37 @@ jobs:
       - name: Run checks
         run: |
           npm run lint
-          npm test
+          npm run test:coverage
+
+      - name: Download baseline release coverage summary
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p .coverage-baseline
+          RUN_ID="$(gh run list --workflow release.yml --status success --limit 1 --json databaseId --jq '.[0].databaseId // empty')"
+
+          if [ -n "$RUN_ID" ]; then
+            gh run download "$RUN_ID" --name coverage-summary --dir .coverage-baseline || true
+          fi
+
+      - name: Report release coverage
+        run: npm run coverage:report -- --baseline .coverage-baseline/coverage-summary.json --title "Release coverage"
+
+      - name: Upload coverage summary artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-summary
+          path: coverage/coverage-summary.json
+          retention-days: 90
+
+      - name: Upload coverage artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: coverage/
+          retention-days: 90
 
       - name: Build package
         run: npm run build
