@@ -43,6 +43,7 @@ high-confidence automated checks.
 - Coverage output directory: `coverage/`.
 
 ## Local Environment Prerequisites
+- Supported Node.js versions follow the GitHub Actions matrix.
 - Install dependencies:
 ```bash
 npm install

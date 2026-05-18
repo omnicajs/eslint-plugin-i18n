@@ -4,7 +4,10 @@ Internal development notes for `@omnicajs/eslint-plugin-i18n`.
 
 ## Requirements
 
-Node version: `>=20.19.0`
+Supported Node.js versions: `22.x` and `24.x`.
+
+The GitHub Actions Node.js matrix is the source of truth for supported runtime
+versions.
 
 Install dependencies:
 
