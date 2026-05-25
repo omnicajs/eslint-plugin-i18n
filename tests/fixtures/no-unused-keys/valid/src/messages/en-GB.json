@@ -1,0 +1,9 @@
+{
+  "docs": {
+    "url": "https://docs.example.test"
+  },
+  "action": {
+    "apply": "Apply",
+    "close": "Close"
+  }
+}

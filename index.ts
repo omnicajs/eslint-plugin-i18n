@@ -4,6 +4,7 @@ import upstream from '@intlify/eslint-plugin-vue-i18n'
 import vueParser from 'vue-eslint-parser'
 import yamlParser from 'yaml-eslint-parser'
 import { defineValidator } from './lib/validators.js'
+import noUnusedKeys from './rules/no-unused-keys.js'
 import validMessageText from './rules/valid-message-text.js'
 
 const UPSTREAM_NAMESPACE = '@intlify/vue-i18n'
@@ -99,6 +100,7 @@ Object.assign(plugin, {
   },
   rules: {
     ...upstream.rules,
+    'no-unused-keys': noUnusedKeys,
     'valid-message-text': validMessageText,
   },
 })

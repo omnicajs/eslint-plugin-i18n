@@ -8,6 +8,7 @@ const namespace = '@omnicajs/i18n'
 describe('plugin entry', () => {
   it('exposes wrapped upstream rules and custom valid-message-text rule', () => {
     expect(plugin.rules).toBeTypeOf('object')
+    expect(plugin.rules['no-unused-keys']).toBeTruthy()
     expect(plugin.rules['valid-message-text']).toBeTruthy()
     expect(pluginModule.defineValidator).toBeTypeOf('function')
   })

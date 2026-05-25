@@ -9,6 +9,7 @@ export default defineConfig({
       include: [
         'dist/index.js',
         'dist/lib/**/*.js',
+        'dist/rules/no-unused-keys.js',
         'dist/rules/valid-message-text.js',
         'dist/rules/visitors/**/*.js',
       ],
