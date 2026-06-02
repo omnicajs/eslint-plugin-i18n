@@ -3,6 +3,10 @@
   "version": "0.0.1",
   "description": "OmnicaJS wrapper for @intlify/eslint-plugin-vue-i18n",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/omnicajs/eslint-plugin-i18n.git"
+  },
   "type": "module",
   "exports": {
     ".": {
